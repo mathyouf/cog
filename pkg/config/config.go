@@ -2,6 +2,8 @@ package config
 
 import (
 	"fmt"
+	"os"
+	"path"
 	"strings"
 
 	"gopkg.in/yaml.v2"
@@ -13,19 +15,20 @@ import (
 // TODO(andreas): support conda packages
 // TODO(andreas): support dockerfiles
 // TODO(andreas): custom cpu/gpu installs
-// TODO(andreas): validate python_requirements
 // TODO(andreas): suggest valid torchvision versions (e.g. if the user wants to use 0.8.0, suggest 0.8.1)
 
 type Build struct {
 	GPU                bool     `json:"gpu,omitempty" yaml:"gpu"`
 	PythonVersion      string   `json:"python_version,omitempty" yaml:"python_version"`
 	PythonRequirements string   `json:"python_requirements,omitempty" yaml:"python_requirements"`
-	PythonPackages     []string `json:"python_packages,omitempty" yaml:"python_packages"`
+	PythonPackages     []string `json:"python_packages,omitempty" yaml:"python_packages"` // Deprecated, but included for backwards compatibility
 	Run                []string `json:"run,omitempty" yaml:"run"`
 	SystemPackages     []string `json:"system_packages,omitempty" yaml:"system_packages"`
 	PreInstall         []string `json:"pre_install,omitempty" yaml:"pre_install"` // Deprecated, but included for backwards compatibility
 	CUDA               string   `json:"cuda,omitempty" yaml:"cuda"`
 	CuDNN              string   `json:"cudnn,omitempty" yaml:"cudnn"`
+
+	pythonRequirementsContent []string
 }
 
 type Example struct {
@@ -92,7 +95,7 @@ func (c *Config) cudaFromTF() (tfVersion string, tfCUDA string, tfCuDNN string, 
 }
 
 func (c *Config) pythonPackageVersion(name string) (version string, ok bool) {
-	for _, pkg := range c.Build.PythonPackages {
+	for _, pkg := range c.Build.pythonRequirementsContent {
 		pkgName, version, err := splitPythonPackage(pkg)
 		if err != nil {
 			// this should be caught by validation earlier
@@ -106,7 +109,7 @@ func (c *Config) pythonPackageVersion(name string) (version string, ok bool) {
 	return "", false
 }
 
-func (c *Config) ValidateAndCompleteConfig() error {
+func (c *Config) ValidateAndCompleteConfig(projectDir string) error {
 	// TODO(andreas): return all errors at once, rather than
 	// whack-a-mole one at a time with errs := []error{}, etc.
 
@@ -124,6 +127,24 @@ func (c *Config) ValidateAndCompleteConfig() error {
 		}
 	}
 
+	if len(c.Build.PythonPackages) > 0 && c.Build.PythonRequirements != "" {
+		return fmt.Errorf("Only one of python_packages or python_requirements can be set in your cog.yaml, not both")
+	}
+
+	// Load python_requirements into memory to simplify reading it multiple times
+	if c.Build.PythonRequirements != "" {
+		b, err := os.ReadFile(path.Join(projectDir, c.Build.PythonRequirements))
+		if err != nil {
+			return err
+		}
+		c.Build.pythonRequirementsContent = strings.Split(string(b), "\n")
+	}
+
+	// Backwards compatibility
+	if len(c.Build.PythonPackages) > 0 {
+		c.Build.pythonRequirementsContent = c.Build.PythonPackages
+	}
+
 	if err := c.validatePythonPackagesHaveVersions(); err != nil {
 		return err
 	}
@@ -134,17 +155,13 @@ func (c *Config) ValidateAndCompleteConfig() error {
 		}
 	}
 
-	if len(c.Build.PythonPackages) > 0 && c.Build.PythonRequirements != "" {
-		return fmt.Errorf("Only one of python_packages or python_requirements can be set in your cog.yaml, not both")
-	}
-
 	return nil
 }
 
 func (c *Config) PythonPackagesForArch(goos string, goarch string) (packages []string, indexURLs []string, err error) {
 	packages = []string{}
 	indexURLSet := map[string]bool{}
-	for _, pkg := range c.Build.PythonPackages {
+	for _, pkg := range c.Build.pythonRequirementsContent {
 		archPkg, indexURL, err := c.pythonPackageForArch(pkg, goos, goarch)
 		if err != nil {
 			return nil, nil, err
@@ -279,7 +296,7 @@ Compatible cuDNN version is: %s`,
 
 func (c *Config) validatePythonPackagesHaveVersions() error {
 	packagesWithoutVersions := []string{}
-	for _, pkg := range c.Build.PythonPackages {
+	for _, pkg := range c.Build.pythonRequirementsContent {
 		_, _, err := splitPythonPackage(pkg)
 		if err != nil {
 			packagesWithoutVersions = append(packagesWithoutVersions, pkg)

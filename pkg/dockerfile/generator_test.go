@@ -2,7 +2,9 @@ package dockerfile
 
 import (
 	"fmt"
+	"io/ioutil"
 	"os"
+	"path"
 	"testing"
 
 	"github.com/stretchr/testify/require"
@@ -56,7 +58,7 @@ build:
 predict: predict.py:Predictor
 `))
 	require.NoError(t, err)
-	require.NoError(t, conf.ValidateAndCompleteConfig())
+	require.NoError(t, conf.ValidateAndCompleteConfig(""))
 
 	gen, err := NewGenerator(conf, tmpDir)
 	require.NoError(t, err)
@@ -87,7 +89,7 @@ build:
 predict: predict.py:Predictor
 `))
 	require.NoError(t, err)
-	require.NoError(t, conf.ValidateAndCompleteConfig())
+	require.NoError(t, conf.ValidateAndCompleteConfig(""))
 	gen, err := NewGenerator(conf, tmpDir)
 	require.NoError(t, err)
 	actual, err := gen.Generate()
@@ -128,7 +130,7 @@ build:
 predict: predict.py:Predictor
 `))
 	require.NoError(t, err)
-	require.NoError(t, conf.ValidateAndCompleteConfig())
+	require.NoError(t, conf.ValidateAndCompleteConfig(""))
 
 	gen, err := NewGenerator(conf, tmpDir)
 	require.NoError(t, err)
@@ -169,7 +171,7 @@ build:
 predict: predict.py:Predictor
 `))
 	require.NoError(t, err)
-	require.NoError(t, conf.ValidateAndCompleteConfig())
+	require.NoError(t, conf.ValidateAndCompleteConfig(""))
 
 	gen, err := NewGenerator(conf, tmpDir)
 	require.NoError(t, err)
@@ -210,7 +212,7 @@ build:
     - "cowsay moo"
 `))
 	require.NoError(t, err)
-	require.NoError(t, conf.ValidateAndCompleteConfig())
+	require.NoError(t, conf.ValidateAndCompleteConfig(""))
 
 	gen, err := NewGenerator(conf, tmpDir)
 	require.NoError(t, err)
@@ -234,19 +236,21 @@ COPY . /src`
 }
 
 func TestPythonRequirements(t *testing.T) {
-	tmpDir, err := os.MkdirTemp("", "test")
+	tmpDir, err := os.MkdirTemp("", "cog-test")
+	require.NoError(t, err)
+	err = ioutil.WriteFile(path.Join(tmpDir, "my-requirements.txt"), []byte("torch==1.0.0"), 0o644)
 	require.NoError(t, err)
 	conf, err := config.FromYAML([]byte(`
 build:
   python_requirements: "my-requirements.txt"
 `))
 	require.NoError(t, err)
-	require.NoError(t, conf.ValidateAndCompleteConfig())
+	require.NoError(t, conf.ValidateAndCompleteConfig(tmpDir))
 
 	gen, err := NewGenerator(conf, tmpDir)
 	require.NoError(t, err)
 	actual, err := gen.Generate()
 	require.NoError(t, err)
-	require.Contains(t, actual, `COPY my-requirements.txt /tmp/requirements.txt
-RUN --mount=type=cache,target=/root/.cache/pip pip install -r /tmp/requirements.txt && rm /tmp/requirements.txt`)
+	fmt.Println(actual)
+	require.Contains(t, actual, `pip install  torch==1.0.0`)
 }
