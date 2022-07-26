@@ -47,13 +47,11 @@ foo==1.0.0`), 0o644)
 
 	requirements, err := config.PythonRequirementsForArch("", "")
 	require.NoError(t, err)
-	expected := []string{
-		"--find-links https://download.pytorch.org/whl/torch_stable.html",
-		"torch==1.7.1+cu110",
-		"torchvision==0.8.2+cu110",
-		"torchaudio==0.7.2",
-		"foo==1.0.0",
-	}
+	expected := `--find-links https://download.pytorch.org/whl/torch_stable.html
+torch==1.7.1+cu110
+torchvision==0.8.2+cu110
+torchaudio==0.7.2
+foo==1.0.0`
 	require.Equal(t, expected, requirements)
 }
 
@@ -178,13 +176,11 @@ func TestPythonPackagesForArchTorchGPU(t *testing.T) {
 
 	requirements, err := config.PythonRequirementsForArch("", "")
 	require.NoError(t, err)
-	expected := []string{
-		"--find-links https://download.pytorch.org/whl/torch_stable.html",
-		"torch==1.7.1+cu101",
-		"torchvision==0.8.2+cu101",
-		"torchaudio==0.7.2",
-		"foo==1.0.0",
-	}
+	expected := `--find-links https://download.pytorch.org/whl/torch_stable.html
+torch==1.7.1+cu101
+torchvision==0.8.2+cu101
+torchaudio==0.7.2
+foo==1.0.0`
 	require.Equal(t, expected, requirements)
 }
 
@@ -207,13 +203,11 @@ func TestPythonPackagesForArchTorchCPU(t *testing.T) {
 
 	requirements, err := config.PythonRequirementsForArch("", "")
 	require.NoError(t, err)
-	expected := []string{
-		"--find-links https://download.pytorch.org/whl/torch_stable.html",
-		"torch==1.7.1+cpu",
-		"torchvision==0.8.2+cpu",
-		"torchaudio==0.7.2",
-		"foo==1.0.0",
-	}
+	expected := `--find-links https://download.pytorch.org/whl/torch_stable.html
+torch==1.7.1+cpu
+torchvision==0.8.2+cpu
+torchaudio==0.7.2
+foo==1.0.0`
 	require.Equal(t, expected, requirements)
 }
 
@@ -236,10 +230,8 @@ func TestPythonPackagesForArchTensorflowGPU(t *testing.T) {
 
 	requirements, err := config.PythonRequirementsForArch("", "")
 	require.NoError(t, err)
-	expected := []string{
-		"tensorflow_gpu==1.15.0",
-		"foo==1.0.0",
-	}
+	expected := `tensorflow_gpu==1.15.0
+foo==1.0.0`
 	require.Equal(t, expected, requirements)
 }
 
