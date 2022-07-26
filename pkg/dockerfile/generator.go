@@ -198,7 +198,7 @@ func (g *Generator) installCog() (string, error) {
 }
 
 func (g *Generator) pipInstalls() (string, error) {
-	packages, indexURLs, err := g.Config.PythonRequirementsForArch(g.GOOS, g.GOARCH)
+	packages, err := g.Config.PythonRequirementsForArch(g.GOOS, g.GOARCH)
 	if err != nil {
 		return "", err
 	}
@@ -211,12 +211,7 @@ func (g *Generator) pipInstalls() (string, error) {
 		return "", err
 	}
 
-	findLinks := ""
-	for _, indexURL := range indexURLs {
-		findLinks += "-f " + indexURL + " "
-	}
-
-	lines = append(lines, "RUN --mount=type=cache,target=/root/.cache/pip pip install "+findLinks+" -r "+containerPath)
+	lines = append(lines, "RUN --mount=type=cache,target=/root/.cache/pip pip install -r "+containerPath)
 	return strings.Join(lines, "\n"), nil
 }
 
