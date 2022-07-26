@@ -249,7 +249,7 @@ func CUDABaseImageFor(cuda string, cuDNN string) (string, error) {
 func tfGPUPackage(ver string, cuda string) (name string, cpuVersion string, err error) {
 	for _, compat := range TFCompatibilityMatrix {
 		if compat.TF == ver && version.Equal(compat.CUDA, cuda) {
-			return splitPythonPackage(compat.TFGPUPackage)
+			return splitPinnedPythonRequirement(compat.TFGPUPackage)
 		}
 	}
 	return "", "", fmt.Errorf("No matching tensorflow GPU package for version %s and CUDA %s", ver, cuda)

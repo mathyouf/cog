@@ -55,6 +55,51 @@ foo==1.0.0`
 	require.Equal(t, expected, requirements)
 }
 
+func TestPythonRequirementsWorksWithLinesCogCannotParse(t *testing.T) {
+	tmpDir, err := os.MkdirTemp("", "cog-test")
+	require.NoError(t, err)
+	err = ioutil.WriteFile(path.Join(tmpDir, "requirements.txt"), []byte(`foo==1.0.0
+# a torch which already has a version
+torch==1.7.1+cu110
+# complex requirements
+fastapi>=0.6,<1
+flask>0.4
+# comments!
+# blank lines!
+
+# arguments
+-f http://example.com
+`), 0o644)
+	require.NoError(t, err)
+
+	config := &Config{
+		Build: &Build{
+			GPU:                true,
+			PythonVersion:      "3.8",
+			PythonRequirements: "requirements.txt",
+		},
+	}
+	err = config.ValidateAndComplete(tmpDir)
+	require.NoError(t, err)
+
+	requirements, err := config.PythonRequirementsForArch("", "")
+	require.NoError(t, err)
+	expected := `foo==1.0.0
+# a torch which already has a version
+torch==1.7.1+cu110
+# complex requirements
+fastapi>=0.6,<1
+flask>0.4
+# comments!
+# blank lines!
+
+# arguments
+-f http://example.com
+`
+	require.Equal(t, expected, requirements)
+
+}
+
 func TestValidateAndCompleteCUDAForAllTF(t *testing.T) {
 	for _, compat := range TFCompatibilityMatrix {
 		config := &Config{
